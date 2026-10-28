@@ -23,10 +23,12 @@ Open **http://localhost:5001**
 
 ### Admin
 - Dashboard, Analytics, Reports, Global Search, Commission
-- Users (CRUD, roles, activate/deactivate)
-- Properties (full details, photos, Display gallery, Compare, Edit/View)
-- Clients & Leads pipeline
-- Deals pipeline with stages & commission
+- Users (CRUD, roles, activate/deactivate) + **CSV export**
+- Properties (full details, multi-photo **lightbox gallery**, Display gallery, Compare, Edit/View)
+  - **Bulk actions** (status change / delete selected)
+  - **CSV export**
+- Clients & Leads pipeline + **CSV export**
+- Deals pipeline with stages & commission + **CSV export**
 - Appointments / viewings
 - Tasks & follow-ups
 - Documents with expiry
@@ -34,15 +36,21 @@ Open **http://localhost:5001**
 - Settings: currency (USD/INR/AED), company, support, timezone
 
 ### Client portal
-- Browse & filter available properties
-- Property detail + photo gallery
+- Browse & filter available properties (**price range, bedrooms, listing type, city, type**)
+- **Saved Searches** — save filter combinations and re-apply anytime
+- Property detail + **multi-photo lightbox gallery** (keyboard arrows + Esc)
 - Request viewing
 - Favorites
 - My appointments
 - Profile
 
 ### Agent
-- Dashboard with assigned stats
+- **Enhanced Dashboard** with:
+  - Stats: properties, available, clients, appointments, pending tasks, open deals, new leads
+  - Recent properties list
+  - Upcoming appointments
+  - Open tasks (priority sorted)
+  - Recent leads
 
 ## Stack
 Flask, Jinja2, SQLite, plain CSS
