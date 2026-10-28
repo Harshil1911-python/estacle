@@ -289,6 +289,27 @@ def migrate_db():
     )''')
     if not db.execute("SELECT value FROM settings WHERE key = 'currency'").fetchone():
         db.execute("INSERT INTO settings (key, value) VALUES ('currency', 'USD')")
+    db.execute("""CREATE TABLE IF NOT EXISTS saved_searches (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        filters TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS inquiries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        property_id INTEGER,
+        user_id INTEGER,
+        full_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'new',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (property_id) REFERENCES properties (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )""")
     db.commit()
 
 
@@ -1293,6 +1314,149 @@ def admin_compare():
 
 
 
+@app.route('/admin/properties/bulk', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_bulk_properties():
+    db = get_db()
+    action = request.form.get('action', '')
+    ids = request.form.getlist('ids')
+    if not ids:
+        flash('No properties selected.', 'warning')
+        return redirect(url_for('admin_properties'))
+    try:
+        ids = [int(i) for i in ids]
+    except ValueError:
+        flash('Invalid selection.', 'danger')
+        return redirect(url_for('admin_properties'))
+    placeholders = ','.join('?' * len(ids))
+    if action == 'delete':
+        db.execute(f'DELETE FROM properties WHERE id IN ({placeholders})', ids)
+        db.commit()
+        log_activity('Bulk deleted properties', 'property', None, f'{len(ids)} items')
+        flash(f'Deleted {len(ids)} properties.', 'success')
+    elif action in ('available', 'under_offer', 'sold', 'rented'):
+        db.execute(f"UPDATE properties SET status = ? WHERE id IN ({placeholders})", [action] + ids)
+        db.commit()
+        log_activity('Bulk status update', 'property', None, f'{len(ids)} → {action}')
+        flash(f'Updated status of {len(ids)} properties to {action}.', 'success')
+    else:
+        flash('Unknown action.', 'warning')
+    return redirect(url_for('admin_properties'))
+
+
+@app.route('/admin/export/properties')
+@login_required
+@role_required('admin')
+def admin_export_properties():
+    import csv
+    import io
+    from flask import Response
+    db = get_db()
+    rows = db.execute('''
+        SELECT p.id, p.title, p.property_type, p.listing_type, p.status, p.price, p.city, p.state,
+               p.bedrooms, p.bathrooms, p.area_sqft, u.full_name as agent_name, p.created_at
+        FROM properties p LEFT JOIN users u ON p.agent_id = u.id
+        ORDER BY p.id
+    ''').fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Title', 'Type', 'Listing', 'Status', 'Price', 'City', 'State',
+                     'Bedrooms', 'Bathrooms', 'Area Sqft', 'Agent', 'Created'])
+    for r in rows:
+        writer.writerow([r['id'], r['title'], r['property_type'], r['listing_type'], r['status'],
+                         r['price'], r['city'], r['state'], r['bedrooms'], r['bathrooms'],
+                         r['area_sqft'], r['agent_name'], r['created_at']])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=estacle_properties.csv'}
+    )
+
+
+@app.route('/admin/export/clients')
+@login_required
+@role_required('admin')
+def admin_export_clients():
+    import csv
+    import io
+    from flask import Response
+    db = get_db()
+    rows = db.execute('''
+        SELECT c.id, c.full_name, c.email, c.phone, c.status, u.full_name as agent_name, c.created_at
+        FROM clients c LEFT JOIN users u ON c.agent_id = u.id ORDER BY c.id
+    ''').fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Full Name', 'Email', 'Phone', 'Status', 'Agent', 'Created'])
+    for r in rows:
+        writer.writerow([r['id'], r['full_name'], r['email'], r['phone'], r['status'], r['agent_name'], r['created_at']])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=estacle_clients.csv'}
+    )
+
+
+@app.route('/admin/export/users')
+@login_required
+@role_required('admin')
+def admin_export_users():
+    import csv
+    import io
+    from flask import Response
+    db = get_db()
+    rows = db.execute(
+        'SELECT id, full_name, email, role, phone, is_active, created_at FROM users ORDER BY id'
+    ).fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Full Name', 'Email', 'Role', 'Phone', 'Active', 'Created'])
+    for r in rows:
+        writer.writerow([r['id'], r['full_name'], r['email'], r['role'], r['phone'], r['is_active'], r['created_at']])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=estacle_users.csv'}
+    )
+
+
+@app.route('/admin/export/deals')
+@login_required
+@role_required('admin')
+def admin_export_deals():
+    import csv
+    import io
+    from flask import Response
+    db = get_db()
+    rows = db.execute('''
+        SELECT d.id, d.title, d.stage, d.value, d.commission_rate, d.expected_close,
+               p.title as property_title, c.full_name as client_name, u.full_name as agent_name, d.created_at
+        FROM deals d
+        LEFT JOIN properties p ON d.property_id = p.id
+        LEFT JOIN clients c ON d.client_id = c.id
+        LEFT JOIN users u ON d.agent_id = u.id
+        ORDER BY d.id
+    ''').fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Title', 'Stage', 'Value', 'Commission %', 'Expected Close',
+                     'Property', 'Client', 'Agent', 'Created'])
+    for r in rows:
+        writer.writerow([r['id'], r['title'], r['stage'], r['value'], r['commission_rate'],
+                         r['expected_close'], r['property_title'], r['client_name'],
+                         r['agent_name'], r['created_at']])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=estacle_deals.csv'}
+    )
+
+
 # ==================== AGENT ====================
 
 @app.route('/agent')
@@ -1300,14 +1464,41 @@ def admin_compare():
 @role_required('agent')
 def agent_dashboard():
     db = get_db()
+    migrate_db()
     agent_id = session['user_id']
+    currency = get_setting('currency', 'USD')
     stats = {
         'my_properties': db.execute('SELECT COUNT(*) FROM properties WHERE agent_id = ?', (agent_id,)).fetchone()[0],
         'my_clients': db.execute('SELECT COUNT(*) FROM clients WHERE agent_id = ?', (agent_id,)).fetchone()[0],
         'appointments': db.execute('SELECT COUNT(*) FROM appointments WHERE agent_id = ?', (agent_id,)).fetchone()[0],
         'available': db.execute("SELECT COUNT(*) FROM properties WHERE agent_id = ? AND status = 'available'", (agent_id,)).fetchone()[0],
+        'pending_tasks': db.execute("SELECT COUNT(*) FROM tasks WHERE assigned_to = ? AND status = 'pending'", (agent_id,)).fetchone()[0],
+        'open_deals': db.execute("SELECT COUNT(*) FROM deals WHERE agent_id = ? AND stage NOT IN ('closed', 'lost')", (agent_id,)).fetchone()[0],
+        'new_leads': db.execute("SELECT COUNT(*) FROM leads WHERE assigned_to = ? AND status = 'new'", (agent_id,)).fetchone()[0],
     }
-    return render_template('agent.html', stats=stats)
+    my_properties = db.execute('''
+        SELECT id, title, price, status, city, property_type, listing_type, created_at
+        FROM properties WHERE agent_id = ? ORDER BY created_at DESC LIMIT 8
+    ''', (agent_id,)).fetchall()
+    upcoming = db.execute('''
+        SELECT a.*, c.full_name as client_name, p.title as property_title
+        FROM appointments a
+        LEFT JOIN clients c ON a.client_id = c.id
+        LEFT JOIN properties p ON a.property_id = p.id
+        WHERE a.agent_id = ? AND a.status = 'scheduled'
+        ORDER BY a.appointment_date ASC LIMIT 6
+    ''', (agent_id,)).fetchall()
+    my_tasks = db.execute('''
+        SELECT * FROM tasks WHERE assigned_to = ? AND status != 'completed'
+        ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, due_date ASC LIMIT 6
+    ''', (agent_id,)).fetchall()
+    recent_leads = db.execute('''
+        SELECT * FROM leads WHERE assigned_to = ? ORDER BY created_at DESC LIMIT 5
+    ''', (agent_id,)).fetchall()
+    return render_template('agent.html', stats=stats, my_properties=my_properties,
+                           upcoming=upcoming, my_tasks=my_tasks, recent_leads=recent_leads,
+                           currency=currency, format_money=format_money)
+
 
 
 # ==================== CLIENT / CUSTOMER ====================
@@ -1342,11 +1533,14 @@ def client_browse():
     listing_type = request.args.get('listing_type', '').strip()
     prop_type = request.args.get('property_type', '').strip()
     city = request.args.get('city', '').strip()
+    min_price = request.args.get('min_price', '').strip()
+    max_price = request.args.get('max_price', '').strip()
+    bedrooms = request.args.get('bedrooms', '').strip()
     sql = "SELECT * FROM properties WHERE status = 'available'"
     params = []
     if q:
-        sql += " AND (title LIKE ? OR city LIKE ? OR address LIKE ?)"
-        params.extend([f'%{q}%'] * 3)
+        sql += " AND (title LIKE ? OR city LIKE ? OR address LIKE ? OR description LIKE ?)"
+        params.extend([f'%{q}%'] * 4)
     if listing_type in ('sale', 'rent'):
         sql += " AND listing_type = ?"
         params.append(listing_type)
@@ -1356,16 +1550,97 @@ def client_browse():
     if city:
         sql += " AND city LIKE ?"
         params.append(f'%{city}%')
+    if min_price:
+        try:
+            sql += " AND price >= ?"
+            params.append(float(min_price))
+        except ValueError:
+            pass
+    if max_price:
+        try:
+            sql += " AND price <= ?"
+            params.append(float(max_price))
+        except ValueError:
+            pass
+    if bedrooms:
+        try:
+            sql += " AND bedrooms >= ?"
+            params.append(int(bedrooms))
+        except ValueError:
+            pass
     sql += " ORDER BY created_at DESC"
     properties = db.execute(sql, params).fetchall()
     currency = get_setting('currency', 'USD')
+    filters = {
+        'q': q, 'listing_type': listing_type, 'property_type': prop_type, 'city': city,
+        'min_price': min_price, 'max_price': max_price, 'bedrooms': bedrooms
+    }
+    saved = db.execute(
+        'SELECT id, name, filters FROM saved_searches WHERE user_id = ? ORDER BY created_at DESC',
+        (session['user_id'],)
+    ).fetchall()
     return render_template(
         'client_browse.html',
         properties=properties,
         currency=currency,
         format_money=format_money,
-        filters={'q': q, 'listing_type': listing_type, 'property_type': prop_type, 'city': city}
+        filters=filters,
+        saved_searches=saved
     )
+
+
+@app.route('/client/saved-search', methods=['POST'])
+@login_required
+@role_required('customer')
+def client_save_search():
+    import json
+    name = request.form.get('name', '').strip() or 'My Search'
+    filters = {
+        'q': request.form.get('q', ''),
+        'listing_type': request.form.get('listing_type', ''),
+        'property_type': request.form.get('property_type', ''),
+        'city': request.form.get('city', ''),
+        'min_price': request.form.get('min_price', ''),
+        'max_price': request.form.get('max_price', ''),
+        'bedrooms': request.form.get('bedrooms', ''),
+    }
+    db = get_db()
+    migrate_db()
+    db.execute(
+        'INSERT INTO saved_searches (user_id, name, filters) VALUES (?, ?, ?)',
+        (session['user_id'], name, json.dumps(filters))
+    )
+    db.commit()
+    flash(f'Search "{name}" saved.', 'success')
+    return redirect(url_for('client_browse', **{k: v for k, v in filters.items() if v}))
+
+
+@app.route('/client/saved-search/<int:sid>/delete', methods=['POST'])
+@login_required
+@role_required('customer')
+def client_delete_saved_search(sid):
+    db = get_db()
+    db.execute('DELETE FROM saved_searches WHERE id = ? AND user_id = ?', (sid, session['user_id']))
+    db.commit()
+    flash('Saved search removed.', 'info')
+    return redirect(url_for('client_browse'))
+
+
+@app.route('/client/saved-search/<int:sid>')
+@login_required
+@role_required('customer')
+def client_apply_saved_search(sid):
+    import json
+    db = get_db()
+    row = db.execute(
+        'SELECT filters FROM saved_searches WHERE id = ? AND user_id = ?',
+        (sid, session['user_id'])
+    ).fetchone()
+    if not row:
+        flash('Saved search not found.', 'warning')
+        return redirect(url_for('client_browse'))
+    filters = json.loads(row['filters'])
+    return redirect(url_for('client_browse', **{k: v for k, v in filters.items() if v}))
 
 
 @app.route('/client/property/<int:prop_id>')
@@ -1496,6 +1771,88 @@ def client_toggle_favorite(prop_id):
         flash('Saved to favorites.', 'success')
     db.commit()
     return redirect(request.referrer or url_for('client_browse'))
+
+
+
+@app.route('/client/inquiry/<int:prop_id>', methods=['POST'])
+@login_required
+@role_required('customer')
+def client_inquiry(prop_id):
+    db = get_db()
+    migrate_db()
+    prop = db.execute("SELECT id, title FROM properties WHERE id = ? AND status = 'available'", (prop_id,)).fetchone()
+    if not prop:
+        flash('Property not found.', 'warning')
+        return redirect(url_for('client_browse'))
+    message = request.form.get('message', '').strip()
+    phone = request.form.get('phone', '').strip() or session.get('email', '')
+    if not message:
+        flash('Please write a message.', 'danger')
+        return redirect(url_for('client_property', prop_id=prop_id))
+    db.execute(
+        '''INSERT INTO inquiries (property_id, user_id, full_name, email, phone, message)
+           VALUES (?, ?, ?, ?, ?, ?)''',
+        (prop_id, session['user_id'], session.get('full_name', ''), session.get('email', ''), phone, message)
+    )
+    db.commit()
+    log_activity('Property inquiry', 'property', prop_id, prop['title'])
+    flash('Your inquiry was sent. An agent will contact you soon.', 'success')
+    return redirect(url_for('client_property', prop_id=prop_id))
+
+
+@app.route('/admin/inquiries')
+@login_required
+@role_required('admin')
+def admin_inquiries():
+    db = get_db()
+    migrate_db()
+    rows = db.execute('''
+        SELECT i.*, p.title as property_title
+        FROM inquiries i
+        LEFT JOIN properties p ON i.property_id = p.id
+        ORDER BY i.created_at DESC
+    ''').fetchall()
+    return render_template('admin_inquiries.html', inquiries=rows)
+
+
+@app.route('/admin/inquiries/status/<int:inq_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_inquiry_status(inq_id):
+    status = request.form.get('status', 'new')
+    if status not in ('new', 'contacted', 'closed'):
+        flash('Invalid status.', 'danger')
+        return redirect(url_for('admin_inquiries'))
+    db = get_db()
+    db.execute('UPDATE inquiries SET status = ? WHERE id = ?', (status, inq_id))
+    db.commit()
+    flash('Inquiry status updated.', 'success')
+    return redirect(url_for('admin_inquiries'))
+
+
+@app.route('/admin/inquiries/delete/<int:inq_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_delete_inquiry(inq_id):
+    db = get_db()
+    db.execute('DELETE FROM inquiries WHERE id = ?', (inq_id,))
+    db.commit()
+    flash('Inquiry deleted.', 'info')
+    return redirect(url_for('admin_inquiries'))
+
+
+@app.route('/agent/properties')
+@login_required
+@role_required('agent')
+def agent_properties():
+    db = get_db()
+    migrate_db()
+    agent_id = session['user_id']
+    currency = get_setting('currency', 'USD')
+    properties = db.execute('''
+        SELECT * FROM properties WHERE agent_id = ? ORDER BY created_at DESC
+    ''', (agent_id,)).fetchall()
+    return render_template('agent_properties.html', properties=properties, currency=currency, format_money=format_money)
 
 
 

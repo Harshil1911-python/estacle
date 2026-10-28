@@ -13,44 +13,43 @@ Open **http://localhost:5001**
 
 ## Demo logins
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@estacle.com | admin123 |
-| Agent | agent@estacle.com | agent123 |
-| Customer | customer@estacle.com | customer123 |
+| Role     | Email                  | Password     |
+|----------|------------------------|--------------|
+| Admin    | admin@estacle.com      | admin123     |
+| Agent    | agent@estacle.com      | agent123     |
+| Customer | customer@estacle.com   | customer123  |
 
 ## Features
 
 ### Admin
 - Dashboard, Analytics, Reports, Global Search, Commission
 - Users (CRUD, roles, activate/deactivate) + **CSV export**
-- Properties (full details, multi-photo **lightbox gallery**, Display gallery, Compare, Edit/View)
+- Properties (full details, multi-photo **lightbox gallery**, Display, Compare)
   - **Bulk actions** (status change / delete selected)
   - **CSV export**
 - Clients & Leads pipeline + **CSV export**
-- Deals pipeline with stages & commission + **CSV export**
+- Deals pipeline + **CSV export**
+- **Property Inquiries** inbox (from clients)
 - Appointments / viewings
 - Tasks & follow-ups
 - Documents with expiry
 - Activity log
-- Settings: currency (USD/INR/AED), company, support, timezone
+- Settings: currency (USD / INR / AED)
 
 ### Client portal
-- Browse & filter available properties (**price range, bedrooms, listing type, city, type**)
-- **Saved Searches** — save filter combinations and re-apply anytime
-- Property detail + **multi-photo lightbox gallery** (keyboard arrows + Esc)
+- Browse & filter (price range, bedrooms, listing type, city, type)
+- **Saved Searches** — save and re-apply filter sets
+- Property detail + **lightbox photo gallery**
+- **Send inquiry** on any property
 - Request viewing
 - Favorites
 - My appointments
 - Profile
 
 ### Agent
-- **Enhanced Dashboard** with:
-  - Stats: properties, available, clients, appointments, pending tasks, open deals, new leads
-  - Recent properties list
-  - Upcoming appointments
-  - Open tasks (priority sorted)
-  - Recent leads
+- **Enhanced Dashboard**: properties, clients, appointments, tasks, deals, leads
+- **My Properties** list
+- Upcoming appointments, open tasks, recent leads
 
 ## Stack
 Flask, Jinja2, SQLite, plain CSS

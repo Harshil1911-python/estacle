@@ -17,7 +17,8 @@
                 <h1 class="page-title">Clients / Leads</h1>
                 <p class="page-subtitle">All clients and leads in the system</p>
             </div>
-            <a href="{{ url_for('admin_add_client') }}" class="btn-primary">Add Client</a>
+            <a href="{{ url_for('admin_export_clients') }}" class="btn-secondary">Export CSV</a>
+                <a href="{{ url_for('admin_add_client') }}" class="btn-primary">Add Client</a>
         </header>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}

@@ -108,6 +108,17 @@
             </div>
         </div>
 
+        <div class="nav-dropdown {% if active == 'inquiries' %}open{% endif %}">
+            <button type="button" class="nav-dropdown-toggle" onclick="this.parentElement.classList.toggle('open')">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Inquiries</span>
+                <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="nav-dropdown-menu">
+                <a href="{{ url_for('admin_inquiries') }}" class="nav-subitem {% if active == 'inquiries' %}active{% endif %}">All Inquiries</a>
+            </div>
+        </div>
+
         <div class="nav-dropdown {% if active == 'activity' %}open{% endif %}">
             <button type="button" class="nav-dropdown-toggle" onclick="this.parentElement.classList.toggle('open')">
                 <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>

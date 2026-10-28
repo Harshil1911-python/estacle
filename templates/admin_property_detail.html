@@ -46,16 +46,57 @@
 
         <div style="padding:0 32px 32px">
             {% if photos %}
-            <div class="gallery-main">
+            <div class="gallery-main" onclick="openLightbox(0)">
                 <img id="mainPhoto" src="{{ url_for('static', filename='uploads/properties/' + photos[0]) }}" alt="{{ prop.title }}">
+                <span class="zoom-hint">Click to enlarge</span>
             </div>
             {% if photos|length > 1 %}
             <div class="gallery-thumbs">
                 {% for ph in photos %}
-                <img src="{{ url_for('static', filename='uploads/properties/' + ph) }}" class="{% if loop.first %}active{% endif %}" onclick="document.getElementById('mainPhoto').src=this.src; document.querySelectorAll('.gallery-thumbs img').forEach(i=>i.classList.remove('active')); this.classList.add('active');">
+                <img src="{{ url_for('static', filename='uploads/properties/' + ph) }}" class="{% if loop.first %}active{% endif %}"
+                     onclick="event.stopPropagation(); setMain({{ loop.index0 }}); openLightbox({{ loop.index0 }})">
                 {% endfor %}
             </div>
             {% endif %}
+            <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+                <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+                <button class="lightbox-prev" onclick="event.stopPropagation(); navLightbox(-1)">‹</button>
+                <img id="lbImg" src="" alt="">
+                <button class="lightbox-next" onclick="event.stopPropagation(); navLightbox(1)">›</button>
+                <div class="lightbox-counter" id="lbCounter"></div>
+            </div>
+            <script>
+            const photoUrls = [{% for ph in photos %}"{{ url_for('static', filename='uploads/properties/' + ph) }}"{% if not loop.last %},{% endif %}{% endfor %}];
+            let lbIndex = 0;
+            function setMain(i) {
+                lbIndex = i;
+                document.getElementById('mainPhoto').src = photoUrls[i];
+                document.querySelectorAll('.gallery-thumbs img').forEach((el, idx) => el.classList.toggle('active', idx === i));
+            }
+            function openLightbox(i) {
+                lbIndex = i;
+                document.getElementById('lbImg').src = photoUrls[i];
+                document.getElementById('lbCounter').textContent = (i+1) + ' / ' + photoUrls.length;
+                document.getElementById('lightbox').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeLightbox() {
+                document.getElementById('lightbox').classList.remove('open');
+                document.body.style.overflow = '';
+            }
+            function navLightbox(dir) {
+                lbIndex = (lbIndex + dir + photoUrls.length) % photoUrls.length;
+                document.getElementById('lbImg').src = photoUrls[lbIndex];
+                document.getElementById('lbCounter').textContent = (lbIndex+1) + ' / ' + photoUrls.length;
+                setMain(lbIndex);
+            }
+            document.addEventListener('keydown', e => {
+                if (!document.getElementById('lightbox').classList.contains('open')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') navLightbox(-1);
+                if (e.key === 'ArrowRight') navLightbox(1);
+            });
+            </script>
             {% else %}
             <div class="no-photo">No photos uploaded</div>
             {% endif %}
