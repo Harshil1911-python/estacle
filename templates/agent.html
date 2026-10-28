@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Dashboard – Estacle</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Estacle" class="sidebar-logo">
+                    <span>Estacle</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('agent_dashboard') }}" class="nav-item active"><span class="nav-icon">📊</span> Dashboard</a>
+                <a href="#" class="nav-item"><span class="nav-icon">🏠</span> My Properties</a>
+                <a href="#" class="nav-item"><span class="nav-icon">👥</span> My Clients</a>
+                <a href="#" class="nav-item"><span class="nav-icon">📅</span> Appointments</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">{{ session.full_name[0] }}</div>
+                    <div class="user-details">
+                        <div class="user-name">{{ session.full_name }}</div>
+                        <div class="user-role">Agent</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h1>Agent Dashboard</h1>
+                <span class="welcome-text">Welcome, {{ session.full_name.split()[0] }}</span>
+            </header>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon blue">🏠</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.my_properties }}</div>
+                        <div class="stat-label">My Properties</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">✅</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.available }}</div>
+                        <div class="stat-label">Available</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.my_clients }}</div>
+                        <div class="stat-label">My Clients</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange">📅</div>
+                    <div class="stat-info">
+                        <div class="stat-value">{{ stats.appointments }}</div>
+                        <div class="stat-label">Appointments</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="welcome-panel">
+                <h2>Welcome to your Agent workspace</h2>
+                <p>Manage your properties, clients and appointments from here. More features coming next.</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

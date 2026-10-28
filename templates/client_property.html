@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | {{ prop.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .gallery-main { width:100%; max-height:360px; border-radius:14px; overflow:hidden; background:#e2e8f0; margin-bottom:12px; }
+        .gallery-main img { width:100%; height:360px; object-fit:cover; display:block; }
+        .gallery-thumbs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+        .gallery-thumbs img { width:80px; height:58px; object-fit:cover; border-radius:8px; cursor:pointer; border:2px solid transparent; }
+        .gallery-thumbs img.active { border-color:#2563eb; }
+        .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+        .detail-card { background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; }
+        .detail-card h3 { font-size:12px; font-weight:600; color:#2563eb; text-transform:uppercase; margin-bottom:10px; }
+        .dr { display:flex; justify-content:space-between; padding:6px 0; font-size:13.5px; border-bottom:1px solid #f8fafc; }
+        .dr span:first-child { color:#64748b; }
+        @media(max-width:700px){ .detail-grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    {% set active = 'browse' %}
+    {% include 'partials/client_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar">
+            <div>
+                <h1 class="page-title">{{ prop.title }}</h1>
+                <p class="page-subtitle">{{ format_money(prop.price, currency) }} · {{ prop.city or '' }} · {{ prop.property_type }}</p>
+            </div>
+            <div style="display:flex;gap:8px">
+            <form method="POST" action="{{ url_for('client_toggle_favorite', prop_id=prop.id) }}" style="display:inline">
+                <button type="submit" class="btn-secondary">Save favorite</button>
+            </form>
+            <a href="{{ url_for('client_browse') }}" class="btn-secondary">Back</a>
+        </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+        {% endwith %}
+        <div style="padding:0 32px 32px">
+            {% if photos %}
+            <div class="gallery-main"><img id="mainPhoto" src="{{ url_for('static', filename='uploads/properties/' + photos[0]) }}" alt=""></div>
+            {% if photos|length > 1 %}
+            <div class="gallery-thumbs">
+                {% for ph in photos %}
+                <img src="{{ url_for('static', filename='uploads/properties/' + ph) }}" class="{% if loop.first %}active{% endif %}" onclick="document.getElementById('mainPhoto').src=this.src;document.querySelectorAll('.gallery-thumbs img').forEach(i=>i.classList.remove('active'));this.classList.add('active')">
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endif %}
+            <div class="detail-grid">
+                <div class="detail-card">
+                    <h3>Details</h3>
+                    <div class="dr"><span>Type</span><span>{{ prop.property_type }}</span></div>
+                    <div class="dr"><span>Listing</span><span>{{ prop.listing_type or 'sale' }}</span></div>
+                    <div class="dr"><span>Beds</span><span>{{ prop.bedrooms or '—' }}</span></div>
+                    <div class="dr"><span>Baths</span><span>{{ prop.bathrooms or '—' }}</span></div>
+                    <div class="dr"><span>Area</span><span>{% if prop.area_sqft %}{{ prop.area_sqft }} sqft{% else %}—{% endif %}</span></div>
+                    <div class="dr"><span>Furnishing</span><span>{{ prop.furnishing or '—' }}</span></div>
+                    <div class="dr"><span>Agent</span><span>{{ prop.agent_name or '—' }}</span></div>
+                </div>
+                <div class="detail-card">
+                    <h3>Location</h3>
+                    <div class="dr"><span>Address</span><span>{{ prop.address or '—' }}</span></div>
+                    <div class="dr"><span>City</span><span>{{ prop.city or '—' }}</span></div>
+                    <div class="dr"><span>State</span><span>{{ prop.state or '—' }}</span></div>
+                    {% if prop.description %}
+                    <h3 style="margin-top:14px">About</h3>
+                    <p style="font-size:13.5px;line-height:1.6;color:#475569">{{ prop.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="detail-card" style="grid-column:1/-1">
+                    <h3>Request a viewing</h3>
+                    <form method="POST" action="{{ url_for('client_request_viewing', prop_id=prop.id) }}" class="admin-form" style="margin-top:8px">
+                        <div class="form-row">
+                            <div class="form-group"><label>Preferred date / time</label><input type="datetime-local" name="preferred_date"></div>
+                            <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Any preferences?"></div>
+                        </div>
+                        <button type="submit" class="btn-primary">Request viewing</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

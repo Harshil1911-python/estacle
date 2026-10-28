@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | Admin – Properties</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+    {% set active = 'properties' %}
+    {% include 'partials/admin_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar">
+            <div>
+                <h1 class="page-title">Properties</h1>
+                <p class="page-subtitle">All property listings across the platform</p>
+            </div>
+            <div style="display:flex;gap:8px">
+                <a href="{{ url_for('admin_display_properties') }}" class="btn-secondary">Display</a>
+                <a href="{{ url_for('admin_add_property') }}" class="btn-primary">Add Property</a>
+            </div>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+        {% endwith %}
+        <div class="panel full">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Title</th><th>Type</th><th>Price</th><th>Status</th><th>City</th><th>Agent</th><th>Created</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in properties %}
+                        <tr>
+                            <td>{{ p.id }}</td>
+                            <td>{{ p.title }}</td>
+                            <td>{{ p.property_type }}</td>
+                            <td>{{ format_money(p.price, currency) if format_money is defined else p.price }}</td>
+                            <td><span class="badge badge-{{ p.status }}">{{ p.status }}</span></td>
+                            <td>{{ p.city or '—' }}</td>
+                            <td>{{ p.agent_name or '—' }}</td>
+                            <td>{{ p.created_at[:10] if p.created_at else '—' }}</td>
+                            <td class="actions-cell">
+                                <a href="{{ url_for('admin_property_detail', prop_id=p.id) }}" class="btn-sm btn-edit">View</a>
+
+                                <form method="POST" action="{{ url_for('admin_update_property_status', prop_id=p.id) }}" style="display:inline;">
+                                    <select name="status" class="status-select" onchange="this.form.submit()">
+                                        <option value="available" {% if p.status == 'available' %}selected{% endif %}>Available</option>
+                                        <option value="under_offer" {% if p.status == 'under_offer' %}selected{% endif %}>Under Offer</option>
+                                        <option value="sold" {% if p.status == 'sold' %}selected{% endif %}>Sold</option>
+                                        <option value="rented" {% if p.status == 'rented' %}selected{% endif %}>Rented</option>
+                                    </select>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin_delete_property', prop_id=p.id) }}" style="display:inline;" onsubmit="return confirm('Delete this property?');">
+                                    <button type="submit" class="btn-sm btn-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="9" class="empty">No properties yet</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

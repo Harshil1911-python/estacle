@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacle | Admin – Edit User</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app-layout">
+    {% set active = 'users' %}
+    {% include 'partials/admin_sidebar.html' %}
+    <main class="main-content">
+        <header class="top-bar">
+            <div>
+                <h1 class="page-title">Edit User</h1>
+                <p class="page-subtitle">Update account details for {{ user.full_name }}</p>
+            </div>
+            <a href="{{ url_for('admin_users') }}" class="btn-secondary">Back to Users</a>
+        </header>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+        {% endwith %}
+        <div class="panel form-panel">
+            <form method="POST" class="admin-form">
+                <div class="form-row">
+                    <div class="form-group"><label>Full Name *</label><input type="text" name="full_name" value="{{ user.full_name }}" required></div>
+                    <div class="form-group"><label>Email *</label><input type="email" name="email" value="{{ user.email }}" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>New Password</label><input type="password" name="password" placeholder="Leave blank to keep current" minlength="6"></div>
+                    <div class="form-group"><label>Phone</label><input type="text" name="phone" value="{{ user.phone or '' }}"></div>
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select name="role" required>
+                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                        <option value="agent" {% if user.role == 'agent' %}selected{% endif %}>Agent</option>
+                        <option value="customer" {% if user.role == 'customer' %}selected{% endif %}>Customer</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </form>
+        </div>
+    </main>
+</div>
+</body>
+</html>
